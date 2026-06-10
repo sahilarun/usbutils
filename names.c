@@ -96,7 +96,7 @@ const char *names_vendor(uint16_t vendorid)
 {
 	char modalias[64];
 
-	snprintf(modalias, sizeof(modalias), "usb:v%04X*", vendorid);
+	sprintf(modalias, "usb:v%04X*", vendorid);
 	return hwdb_get(modalias, "ID_VENDOR_FROM_DATABASE");
 }
 
@@ -104,7 +104,7 @@ const char *names_product(uint16_t vendorid, uint16_t productid)
 {
 	char modalias[64];
 
-	snprintf(modalias, sizeof(modalias), "usb:v%04Xp%04X*", vendorid, productid);
+	sprintf(modalias, "usb:v%04Xp%04X*", vendorid, productid);
 	return hwdb_get(modalias, "ID_MODEL_FROM_DATABASE");
 }
 
@@ -112,7 +112,7 @@ const char *names_class(uint8_t classid)
 {
 	char modalias[64];
 
-	snprintf(modalias, sizeof(modalias), "usb:v*p*d*dc%02X*", classid);
+	sprintf(modalias, "usb:v*p*d*dc%02X*", classid);
 	return hwdb_get(modalias, "ID_USB_CLASS_FROM_DATABASE");
 }
 
@@ -120,7 +120,7 @@ const char *names_subclass(uint8_t classid, uint8_t subclassid)
 {
 	char modalias[64];
 
-	snprintf(modalias, sizeof(modalias), "usb:v*p*d*dc%02Xdsc%02X*", classid, subclassid);
+	sprintf(modalias, "usb:v*p*d*dc%02Xdsc%02X*", classid, subclassid);
 	return hwdb_get(modalias, "ID_USB_SUBCLASS_FROM_DATABASE");
 }
 
@@ -128,7 +128,7 @@ const char *names_protocol(uint8_t classid, uint8_t subclassid, uint8_t protocol
 {
 	char modalias[64];
 
-	snprintf(modalias, sizeof(modalias), "usb:v*p*d*dc%02Xdsc%02Xdp%02X*", classid, subclassid, protocolid);
+	sprintf(modalias, "usb:v*p*d*dc%02Xdsc%02Xdp%02X*", classid, subclassid, protocolid);
 	return hwdb_get(modalias, "ID_USB_PROTOCOL_FROM_DATABASE");
 }
 
@@ -207,28 +207,23 @@ int get_subclass_string(char *buf, size_t size, uint8_t cls, uint8_t subcls)
  * either or both are not present, instead populate those from the device's
  * own string descriptors.
  */
-void get_vendor_product_with_fallback(char *vendor, int vendor_len,
-				      char *product, int product_len,
-				      libusb_device *dev)
+void get_vendor_product_with_fallback(char *vendor, int vendor_len, char *product, int product_len, libusb_device *dev,
+				      struct libusb_device_descriptor *desc)
 {
-	struct libusb_device_descriptor desc;
 	char sysfs_name[PATH_MAX];
 	bool have_vendor, have_product;
 
-	libusb_get_device_descriptor(dev, &desc);
-
 	/* set to "[unknown]" by default unless something below finds a string */
-	snprintf(vendor, vendor_len, "[unknown]");
-	snprintf(product, product_len, "[unknown]");
+	strncpy(vendor, "[unknown]", vendor_len);
+	strncpy(product, "[unknown]", product_len);
 
-	have_vendor = !!get_vendor_string(vendor, vendor_len, desc.idVendor);
-	have_product = !!get_product_string(product, product_len,
-			desc.idVendor, desc.idProduct);
+	have_vendor = !!get_vendor_string(vendor, vendor_len, desc->idVendor);
+	have_product = !!get_product_string(product, product_len, desc->idVendor, desc->idProduct);
 
 	if (have_vendor && have_product)
 		return;
 
-	if (get_sysfs_name(sysfs_name, sizeof(sysfs_name), dev) >= 0) {
+	if (dev && get_sysfs_name(sysfs_name, sizeof(sysfs_name), dev) >= 0) {
 		if (!have_vendor)
 			read_sysfs_prop(vendor, vendor_len, sysfs_name, "manufacturer");
 		if (!have_product)
